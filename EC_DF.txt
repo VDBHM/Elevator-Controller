@@ -1,0 +1,102 @@
+
+
+module elevator_control (
+    input clk,
+    input reset,
+    input [1:0] target_floor,   // The floor the user wants
+    output reg [1:0] current_f, // The floor where elevator is now
+    output reg [1:0] motor,     // 01=Up, 10=Down, 00=Stop
+    output reg door             // 1=Open, 0=Closed
+);
+
+    // Using readable names for our states
+    localparam GROUND    = 3'b000;
+    localparam MOVING_UP = 3'b001;
+    localparam FLOOR_1   = 3'b010;
+    localparam MOVING_DN = 3'b011;
+    localparam FLOOR_2   = 3'b100;
+
+    reg [2:0] state, next_state;
+
+    // --- STEP 1: Flip-Flops for State Memory ---
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            state <= GROUND; // Start at the ground floor on reset
+        else
+            state <= next_state;
+    end
+
+    // --- STEP 2: Logic to decide the Next State ---
+    always @(*) begin
+        next_state = state; // Stay in current state by default
+
+        case (state)
+            GROUND: begin
+                if (target_floor > 2'd0) 
+                    next_state = MOVING_UP;
+            end
+
+            MOVING_UP: begin
+                // If we are heading to floor 1, stop there. 
+                // If we want floor 2, we have to pass floor 1 first anyway.
+                if (target_floor == 2'd1) 
+                    next_state = FLOOR_1;
+                else if (target_floor == 2'd2) 
+                    next_state = FLOOR_2;
+            end
+
+            FLOOR_1: begin
+                if (target_floor > 2'd1) 
+                    next_state = MOVING_UP;
+                else if (target_floor < 2'd1) 
+                    next_state = MOVING_DN;
+            end
+
+            MOVING_DN: begin
+                if (target_floor == 2'd1) 
+                    next_state = FLOOR_1;
+                else if (target_floor == 2'd0) 
+                    next_state = GROUND;
+            end
+
+            FLOOR_2: begin
+                if (target_floor < 2'd2) 
+                    next_state = MOVING_DN;
+            end
+
+            default: next_state = GROUND;
+        endcase
+    end
+
+    // --- STEP 3: Assigning Outputs (Moore Style) ---
+    always @(*) begin
+        // Reset outputs to safe values first
+        motor = 2'b00;
+        door = 1'b0;
+        current_f = 2'b00;
+
+        case (state)
+            GROUND: begin
+                current_f = 2'd0;
+                door = 1'b1; // Open door when reached
+            end
+            FLOOR_1: begin
+                current_f = 2'd1;
+                door = 1'b1;
+            end
+            FLOOR_2: begin
+                current_f = 2'd2;
+                door = 1'b1;
+            end
+            MOVING_UP: begin
+                motor = 2'b01; // Motor spins forward
+                door = 1'b0;  // Keep door closed while moving!
+            end
+            MOVING_DN: begin
+                motor = 2'b10; // Motor spins backward
+                door = 1'b0;
+            end
+        endcase
+    end
+
+endmodule
