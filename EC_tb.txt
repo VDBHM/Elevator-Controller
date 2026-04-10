@@ -1,17 +1,16 @@
-`timescale 1ns/1ps
 
-module tb_elevator();
-    // Inputs are registers
+
+module tb_elevator;
+
     reg clk;
     reg reset;
     reg [1:0] target_floor;
 
-    // Outputs are wires
+
     wire [1:0] current_f;
     wire [1:0] motor;
     wire door;
 
-    // Instantiate the Unit Under Test (UUT)
     elevator_control uut (
         .clk(clk),
         .reset(reset),
@@ -21,36 +20,34 @@ module tb_elevator();
         .door(door)
     );
 
-    // Generate Clock (100MHz / 10ns period)
-    always #5 clk = ~clk;
-
+  
     initial begin
-        // --- Waveform Generation ---
-        // This creates a 'dump.vcd' file to view in a waveform viewer
-        $dumpfile("elevator_sim.vcd");
-        $dumpvars(0, tb_elevator);
-
-        // --- Initialization ---
         clk = 0;
-        reset = 1;
-        target_floor = 0;
-
-        // Release reset after a few cycles
-        #15 reset = 0; 
-
-        // Test Scenario 1: Move from Ground to Floor 2
-        #10 target_floor = 2;
-
-        // Wait for the FSM to transition through MOVING_UP to FLOOR_2
-        #100; 
-
-        // Test Scenario 2: Move from Floor 2 back to Floor 1
-        #20 target_floor = 1;
-
-        // Give it time to stabilize at the new floor
-        #100;
-
-        // End simulation
-        #50 $finish;
+        forever #5 clk = ~clk;
     end
+
+    
+    initial begin
+        reset = 1;
+        target_floor = 2'd0;
+
+        #20;
+        reset = 0;
+
+        #20;
+        target_floor = 2'd1;
+
+        #100;
+        target_floor = 2'd2;
+
+        #100;
+        target_floor = 2'd0;
+
+
+        #100;
+        target_floor = 2'd2;
+
+        #100; $finish;
+    end
+
 endmodule
